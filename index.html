@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>榜单数据资产汇报</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #111; overflow: hidden; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  #stage { position: absolute; inset: 0 0 48px 0; display: flex; align-items: center; justify-content: center; }
+  #stage img { max-width: 100%; max-height: 100%; box-shadow: 0 4px 30px rgba(0,0,0,.6); user-select: none; -webkit-user-drag: none; }
+  #bar { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; background: rgba(0,0,0,.85); display: flex; align-items: center; gap: 12px; padding: 0 16px; color: #eee; z-index: 10; }
+  #bar button { background: #333; color: #fff; border: none; border-radius: 6px; padding: 6px 14px; cursor: pointer; font-size: 14px; }
+  #bar button:hover { background: #f5c518; color: #111; }
+  #counter { font-size: 14px; min-width: 64px; text-align: center; }
+  #progress { flex: 1; height: 4px; background: #444; border-radius: 2px; cursor: pointer; position: relative; }
+  #progress-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #f5c518; border-radius: 2px; width: 0; }
+  #thumbs-btn { margin-left: 4px; }
+  #thumbs { position: absolute; left: 0; top: 0; bottom: 48px; width: 200px; background: rgba(0,0,0,.9); overflow-y: auto; z-index: 20; display: none; padding: 10px; }
+  #thumbs.open { display: block; }
+  #thumbs img { width: 100%; margin-bottom: 8px; cursor: pointer; border: 2px solid transparent; border-radius: 4px; display: block; }
+  #thumbs img.active { border-color: #f5c518; }
+  @media (max-width: 640px) { #thumbs { width: 130px; } }
+</style>
+</head>
+<body>
+<div id="stage"><img id="slide" src="slides/slide-01.jpg" alt="slide"></div>
+<div id="thumbs"></div>
+<div id="bar">
+  <button id="prev">‹ 上一页</button>
+  <span id="counter">1 / 23</span>
+  <button id="next">下一页 ›</button>
+  <div id="progress"><div id="progress-fill"></div></div>
+  <button id="fullscreen">⛶</button>
+  <button id="thumbs-btn">☰ 目录</button>
+</div>
+<script>
+const TOTAL = 23;
+let cur = 1;
+const slide = document.getElementById('slide');
+const counter = document.getElementById('counter');
+const fill = document.getElementById('progress-fill');
+const thumbs = document.getElementById('thumbs');
+const pad = n => String(n).padStart(2, '0');
+const src = n => `slides/slide-${pad(n)}.jpg`;
+
+// 预加载相邻页
+const preloaded = {};
+function show(n) {
+  cur = Math.min(TOTAL, Math.max(1, n));
+  slide.src = src(cur);
+  counter.textContent = `${cur} / ${TOTAL}`;
+  fill.style.width = (cur / TOTAL * 100) + '%';
+  [cur-1, cur+1].forEach(i => { if (i >= 1 && i <= TOTAL && !preloaded[i]) { preloaded[i] = 1; new Image().src = src(i); } });
+  document.querySelectorAll('#thumbs img').forEach((t, idx) => t.classList.toggle('active', idx === cur - 1));
+}
+for (let i = 1; i <= TOTAL; i++) {
+  const t = document.createElement('img');
+  t.src = src(i); t.loading = 'lazy';
+  t.onclick = () => { show(i); thumbs.classList.remove('open'); };
+  thumbs.appendChild(t);
+}
+document.getElementById('prev').onclick = () => show(cur - 1);
+document.getElementById('next').onclick = () => show(cur + 1);
+document.getElementById('fullscreen').onclick = () => {
+  document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+};
+document.getElementById('thumbs-btn').onclick = () => thumbs.classList.toggle('open');
+document.getElementById('progress').onclick = e => {
+  const r = e.currentTarget.getBoundingClientRect();
+  show(Math.ceil((e.clientX - r.left) / r.width * TOTAL));
+};
+document.addEventListener('keydown', e => {
+  if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(cur + 1); }
+  if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+  if (e.key === 'Home') show(1);
+  if (e.key === 'End') show(TOTAL);
+  if (e.key === 'f' || e.key === 'F') document.getElementById('fullscreen').click();
+});
+// 触屏滑动翻页
+let sx = 0;
+document.getElementById('stage').addEventListener('touchstart', e => sx = e.touches[0].clientX, {passive: true});
+document.getElementById('stage').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - sx;
+  if (Math.abs(dx) > 50) show(dx < 0 ? cur + 1 : cur - 1);
+}, {passive: true});
+show(1);
+</script>
+</body>
+</html>
